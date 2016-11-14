@@ -5,12 +5,11 @@ import io.github.xausky.arf.exception.ActiveRecordException;
 import io.github.xausky.arf.exception.ConfigException;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.FixMethodOrder;
 import org.junit.Test;
-import org.junit.runners.MethodSorters;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -21,6 +20,8 @@ import java.util.Collections;
  * Created by xausky on 11/14/16.
  */
 public class ModelTest {
+    private static Connection connection = null;
+    private static Statement statement = null;
     private User user;
     @BeforeClass
     public static void init() throws SQLException, ConfigException {
@@ -28,8 +29,8 @@ public class ModelTest {
         dataSource.setURL("jdbc:h2:mem:test");
         dataSource.setUser("root");
         dataSource.setPassword("root");
-        Connection connection = dataSource.getConnection();
-        Statement statement = connection.createStatement();
+        connection = dataSource.getConnection();
+        statement = connection.createStatement();
         statement.execute("CREATE TABLE User(id INTEGER NOT NULL AUTO_INCREMENT, name VARCHAR(256), email VARCHAR(256) )" );
         new ActiveRecordConfig(dataSource,new H2Dialect());
     }
@@ -75,5 +76,23 @@ public class ModelTest {
     public void testDelete() throws SQLException, ActiveRecordException {
         user.delete();
         Assert.assertEquals(user.select(), Collections.EMPTY_LIST);
+    }
+
+    @Test
+    public void testPaginate() throws SQLException {
+        for(int i=0;i<16;i++){
+            insert();
+        }
+        Page<User> page = user.select(0,10);
+        //加上预插入的数据应为17
+        Assert.assertEquals(page.getTotalSize(),17);
+        Assert.assertEquals(page.getTotalPage(),2);
+        Assert.assertEquals(page.getList().size(),10);
+        Assert.assertEquals(page.getList().get(4).getName(),"xausky");
+    }
+
+    @AfterClass
+    public static void close(){
+        Utils.close(null,statement,connection);
     }
 }

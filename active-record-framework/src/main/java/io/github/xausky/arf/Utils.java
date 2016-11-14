@@ -1,5 +1,9 @@
 package io.github.xausky.arf;
 
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.select.Select;
+
 import javax.persistence.Column;
 import javax.persistence.Id;
 import java.lang.reflect.Field;
