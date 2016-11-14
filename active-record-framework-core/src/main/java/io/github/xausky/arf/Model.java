@@ -89,6 +89,28 @@ public abstract class Model<T extends Model> {
     }
 
     /**
+     * 查询当前主键@Id对应的记录
+     * @return 当前主键ID对应对象,不存在返回null.
+     * @throws SQLException 发生SQL异常
+     * @throws ActiveRecordException 主键@Id为null
+     */
+    public T select() throws SQLException, ActiveRecordException {
+        try {
+            Object idValue = modelConfig.getIdField().get(this);
+            if (idValue == null) {
+                throw new ActiveRecordException("Default select operating @Id column value cannot is null." + modelConfig.getIdField().getName());
+            }
+            String sql = activeRecordConfig.getDialect().select(modelConfig.getTable(),new String[]{modelConfig.getIdField().getName()});
+            return select(sql,idValue).get(0);
+        }catch (IllegalAccessException e){
+            e.printStackTrace();
+        }catch (IndexOutOfBoundsException e){
+            System.err.println("Select result set is empty.");
+        }
+        return null;
+    }
+
+    /**
      * 执行一条SelectSQL值使用?占位,返回实体集.
      * @param sql 要执行的SelectSQL.
      * @param values SQL中?占位符的值.
@@ -178,7 +200,7 @@ public abstract class Model<T extends Model> {
         try {
             Object idValue = modelConfig.getIdField().get(this);
             if(idValue == null){
-                throw new ActiveRecordException("Update operating @Id column value cannot is null." + modelConfig.getIdField().getName());
+                throw new ActiveRecordException("Delete operating @Id column value cannot is null." + modelConfig.getIdField().getName());
             }
             String sql = activeRecordConfig.getDialect()
                     .delete(modelConfig.getTable(),new String[]{modelConfig.getIdField().getName()});
