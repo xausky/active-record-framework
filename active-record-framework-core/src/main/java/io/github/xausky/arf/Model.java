@@ -210,7 +210,7 @@ public abstract class Model<T extends Model> {
         }catch (IllegalAccessException e){
             e.printStackTrace();
         }catch (InternalException e){
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         }
     }
 

@@ -4,6 +4,7 @@ import io.github.xausky.arf.dialect.H2Dialect;
 import io.github.xausky.arf.exception.ActiveRecordException;
 import io.github.xausky.arf.exception.ConfigException;
 import org.h2.jdbcx.JdbcDataSource;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -19,6 +20,7 @@ import java.sql.Statement;
  * Created by xausky on 11/14/16.
  */
 public class ModelTest {
+    private User user;
     @BeforeClass
     public static void init() throws SQLException, ConfigException {
         JdbcDataSource dataSource = new JdbcDataSource();
@@ -31,42 +33,39 @@ public class ModelTest {
         new ActiveRecordConfig(dataSource,new H2Dialect());
     }
 
-    @Test
-    public void testInsert() throws SQLException, ActiveRecordException {
-        User user = new User();
+    @Before
+    public void insert() throws SQLException {
+        user = new User();
         user.setName("xausky");
         user.setId((int)user.insert());
-        Assert.assertNotEquals(user.insert(),0);
+    }
+
+    @After
+    public void delete() throws SQLException, ActiveRecordException {
         user.delete();
+    }
+
+    @Test
+    public void testInsert() throws SQLException, ActiveRecordException {
+        Assert.assertNotEquals(user.getId().intValue(),0);
     }
 
     @Test
     public void testSelect() throws SQLException, ActiveRecordException {
-        User user = new User();
-        user.setName("xausky");
-        user.setId((int)user.insert());
         user = user.select();
         Assert.assertEquals(user.getName(),"xausky");
-        user.delete();
     }
 
     @Test
     public void testUpdate() throws SQLException, ActiveRecordException {
-        User user = new User();
-        user.setName("xausky");
-        user.setId((int)user.insert());
         user.setName("updated");
         user.update();
         user = user.select();
         Assert.assertEquals(user.getName(),"updated");
-        user.delete();
     }
 
     @Test
     public void testDelete() throws SQLException, ActiveRecordException {
-        User user = new User();
-        user.setName("xausky");
-        user.setId((int)user.insert());
         user.delete();
         Assert.assertEquals(user.select(),null);
     }
