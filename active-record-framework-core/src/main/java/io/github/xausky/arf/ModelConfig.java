@@ -10,7 +10,7 @@ import java.util.List;
 public class ModelConfig {
     private List<Field> fields;
     private Field idField;
-    private String tableName;
+    private String table;
 
 
     public List<Field> getFields() {
@@ -29,11 +29,11 @@ public class ModelConfig {
         this.idField = idField;
     }
 
-    public String getTableName() {
-        return tableName;
+    public String getTable() {
+        return table;
     }
 
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
+    public void setTable(String table) {
+        this.table = table;
     }
 }

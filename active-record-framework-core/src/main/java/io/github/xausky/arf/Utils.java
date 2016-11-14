@@ -3,9 +3,11 @@ package io.github.xausky.arf;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import java.lang.reflect.Field;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,56 +15,28 @@ import java.util.List;
  * Created by xausky on 11/10/16.
  */
 public class Utils {
-    public static void appendEnableFieldName(StringBuffer sb, List<Field> fields, Object obj)
-            throws IllegalAccessException {
-        boolean start = true;
-        for(Field field:fields){
-            if(field.get(obj)!=null){
-                if(start){
-                    start = false;
-                }else {
-                    sb.append(",");
-                }
-                sb.append(field.getName());
-            }
-        }
-    }
 
-    public static void appendEnableFieldChar(StringBuffer sb, List<Field> fields, Object obj)
+    public static void parserNotNullField(
+            Object obj, List<Field> fields,List<String> keys,List<Object> values)
             throws IllegalAccessException {
-        boolean start = true;
         for(Field field:fields){
             Object value = field.get(obj);
-            if(value != null){
-                if(start){
-                    start = false;
-                }else {
-                    sb.append(",");
-                }
-                sb.append("?");
+            if(value!=null){
+                keys.add(field.getName());
+                values.add(value);
             }
         }
     }
 
-    public static void setEnableFieldValue(PreparedStatement statement, List<Field> fields, Object obj)
-            throws IllegalAccessException, SQLException {
-        int index = 1;
-        for(Field field:fields){
-            Object value = field.get(obj);
-            if(value != null){
-                statement.setObject(index,value);
-                index++;
-            }
-        }
-    }
-
-    public static List parserResult(ResultSet result, List<Field> fields, Class c) throws SQLException,
+    public static List parserResult(ResultSet result, List<Field> fields, Field idField, Class c) throws SQLException,
             IllegalAccessException, InstantiationException {
         List<Object> list = new ArrayList<Object>();
         while (result.next()){
             Object model = c.newInstance();
+            Object value = result.getObject(idField.getName());
+            idField.set(model,value);
             for(Field field:fields){
-                Object value = result.getObject(field.getName());
+                value = result.getObject(field.getName());
                 field.set(model,value);
             }
             list.add(model);
@@ -86,5 +60,29 @@ public class Utils {
             }
         }
         return idField;
+    }
+
+    public static void close(ResultSet rs, Statement s, Connection c){
+        if(rs != null){
+            try {
+                rs.close();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        if(s != null){
+            try{
+                s.close();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        if(c != null){
+            try {
+                c.close();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
     }
 }

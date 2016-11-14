@@ -1,6 +1,7 @@
 package io.github.xausky.arfe;
 
-import io.github.xausky.arf.DataSourceConfig;
+import io.github.xausky.arf.ActiveRecordConfig;
+import io.github.xausky.arf.dialect.H2Dialect;
 import org.h2.jdbcx.JdbcDataSource;
 import org.h2.tools.Server;
 
@@ -25,7 +26,7 @@ public class Main {
             statement.execute("CREATE TABLE User(id INTEGER NOT NULL AUTO_INCREMENT," +
                             " name VARCHAR(256)," +
                             " email VARCHAR(256))");
-            DataSourceConfig dataSourceConfig = new DataSourceConfig(dataSource);
+            ActiveRecordConfig activeRecordConfig = new ActiveRecordConfig(dataSource,new H2Dialect());
 
             User user = new User();
             user.setName("xausky");
@@ -37,6 +38,8 @@ public class Main {
             List<User> users = user.selectByEmail("xausky@gmail.com");
             for(User u:users){
                 System.out.printf("User{ id:%s, name:%s, email:%s }\n",u.getId(),u.getName(),u.getEmail());
+                u.setEmail(u.getName()+"@163.com");
+                u.delete();
             }
             Server server = Server.createWebServer();
             server.start();

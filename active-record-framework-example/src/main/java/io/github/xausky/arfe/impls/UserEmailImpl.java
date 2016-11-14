@@ -28,6 +28,6 @@ public class UserEmailImpl extends Model<User> implements UserEmailInterface {
 
     @Override
     public List<User> selectByEmail(String email) throws SQLException {
-        return select(String.format("SELECT * FROM %s WHERE email='%s'",config.getTableName(),getEmail()));
+        return select("SELECT * FROM " + modelConfig.getTable() + " WHERE email=?", getEmail());
     }
 }

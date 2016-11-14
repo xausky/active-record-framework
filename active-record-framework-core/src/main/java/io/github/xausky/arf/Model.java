@@ -1,9 +1,10 @@
 package io.github.xausky.arf;
 
-import javax.persistence.Column;
-import javax.persistence.Id;
+import io.github.xausky.arf.exception.ActiveRecordException;
+import io.github.xausky.arf.exception.ConfigException;
+import io.github.xausky.arf.exception.InternalException;
+
 import javax.sql.DataSource;
-import javax.xml.crypto.Data;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,107 +13,205 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * ActiveRecord 模型的基类
+ * ActiveRecord 模型的基类,提供CRUD功能.
  * Created by xausky on 11/10/16.
  */
-public class Model<T extends Model> {
-    private static Map<String,ModelConfig> models = new HashMap<>();
-    protected ModelConfig config = null;
-    private DataSource dataSource;
+public abstract class Model<T extends Model> {
+    private static Map<String,ModelConfig> modelsCache = new HashMap<>();
+    protected ModelConfig modelConfig = null;
+    private ActiveRecordConfig activeRecordConfig;
     public Model() {
-        dataSource = initDataSource();
+        activeRecordConfig = config();
         String name = this.getClass().getName();
-        config = models.get(name);
-        if(config == null){
-            config = new ModelConfig();
+        modelConfig = modelsCache.get(name);
+        if(modelConfig == null){
+            modelConfig = new ModelConfig();
             //fields 需要保证有序,其最后一个元素为@Id
             List<Field> fields = new ArrayList<>();
             Field idField = Utils.parserField(this.getClass(),fields);
-            config.setFields(fields);
-            config.setIdField(idField);
-            config.setTableName(name.substring(name.lastIndexOf(".") + 1));
-            models.put(name,config);
+            modelConfig.setFields(fields);
+            modelConfig.setIdField(idField);
+            modelConfig.setTable(name.substring(name.lastIndexOf(".") + 1));
+            modelsCache.put(name,modelConfig);
         }
     }
 
     /**
-     * 讲本对象插入数据库
-     * @return 新插入行的自增列的值
-     * @throws SQLException 数据源为空,或发生SQL异常
+     * 将当前对象插入数据库,将忽略主键@Id.
+     * @return 成功返回自增主键值,失败返回0.
+     * @throws SQLException 发生SQL异常.
      */
-    public long insert() throws SQLException {
+    public long insert() throws SQLException{
+        try {
+            List<String> keys = new LinkedList<>();
+            List<Object> values = new LinkedList<>();
+            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            String sql = activeRecordConfig.getDialect()
+                    .insert(modelConfig.getTable(),keys.toArray(new String[keys.size()]));
+            return insert(sql,values.toArray());
+        }catch (IllegalAccessException e){
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
+     * 执行一条InsertSQL值使用?占位.
+     * @param sql 要执行的InsertSQL.
+     * @param values SQL中?占位符的值.
+     * @return 成功返回自增主键值,失败返回0.
+     * @throws SQLException 发生了SQL异常
+     */
+    public long insert(String sql,Object ...values) throws SQLException{
         Connection connection = null;
         PreparedStatement statement = null;
         ResultSet result = null;
-        try {
-            StringBuffer sb = new StringBuffer("INSERT INTO ");
-            sb.append(config.getTableName());
-            sb.append(" (");
-            Utils.appendEnableFieldName(sb, config.getFields(),this);
-            sb.append(") VALUES (");
-            Utils.appendEnableFieldChar(sb,config.getFields(),this);
-            sb.append(")");
-            connection = dataSource.getConnection();
-            statement = connection.prepareStatement(sb.toString(),
-                    Statement.RETURN_GENERATED_KEYS);
-            Utils.setEnableFieldValue(statement,config.getFields(),this);
-            statement.executeUpdate();
+        try{
+            connection = activeRecordConfig.getDataSource().getConnection();
+            statement = connection.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS);
+            for(int i=0;i<values.length;i++){
+                statement.setObject(i+1,values[i]);
+            }
+            statement.execute();
             result = statement.getGeneratedKeys();
             if(result.next()){
-                Object value = result.getObject(1);
                 return result.getLong(1);
             }
-        }catch (IllegalAccessException e){
-            e.printStackTrace();
         }finally {
-            if(result!=null){
-                result.close();
-            }
-            if(statement!=null){
-                statement.close();
-            }
-            if(connection!=null){
-                connection.close();
-            }
+            Utils.close(result,statement,connection);
         }
-        return -1;
+        return 0;
     }
 
+    /**
+     * 执行一条SelectSQL值使用?占位,返回实体集.
+     * @param sql 要执行的SelectSQL.
+     * @param values SQL中?占位符的值.
+     * @return 执行结果的实体集为ArrayList&lt;实体类型&gt;,失败返回null.
+     * @throws SQLException 发生了SQL异常
+     */
     @SuppressWarnings("unchecked")
-    public List<T> select(String sql) throws SQLException{
+    public List<T> select(String sql,Object ...values) throws SQLException{
         Connection connection = null;
-        Statement statement = null;
+        PreparedStatement statement = null;
         ResultSet result = null;
         try{
-            connection = dataSource.getConnection();
-            statement = connection.createStatement();
-            result = statement.executeQuery(sql);
-            return Utils.parserResult(result,config.getFields(),this.getClass());
-        }catch (Exception e){
+            connection = activeRecordConfig.getDataSource().getConnection();
+            statement = connection.prepareStatement(sql);
+            for(int i=0;i<values.length;i++){
+                statement.setObject(i+1,values[i]);
+            }
+            result = statement.executeQuery();
+            return Utils.parserResult(result,modelConfig.getFields(),modelConfig.getIdField(),this.getClass());
+        } catch (InstantiationException e) {
             e.printStackTrace();
-        }finally {
-            if(result!=null){
-                result.close();
-            }
-            if(statement!=null){
-                statement.close();
-            }
-            if(connection!=null){
-                connection.close();
-            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } finally {
+            Utils.close(result,statement,connection);
         }
         return null;
     }
 
-    protected DataSource initDataSource(){
-        DataSource dataSource = DataSourceConfig.getDataSource();
-        if(dataSource == null){
-            new SQLException("Not set data source.").printStackTrace();
+    /**
+     * 通过主键@Id来更新当前对象的其他非NULL属性.
+     * @throws SQLException 发生SQL异常.
+     * @throws ActiveRecordException 主键@Id为null.
+     */
+    public void update() throws SQLException, ActiveRecordException {
+        try {
+            Object idValue = modelConfig.getIdField().get(this);
+            if(idValue == null){
+                throw new ActiveRecordException("Update operating @Id column value cannot is null." + modelConfig.getIdField().getName());
+            }
+            List<String> keys = new LinkedList<>();
+            List<Object> values = new LinkedList<>();
+            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            String sql = activeRecordConfig.getDialect()
+                    .update(modelConfig.getTable(),
+                            keys.toArray(new String[keys.size()]),
+                            new String[]{modelConfig.getIdField().getName()});
+            values.add(idValue);
+            if(update(sql,values.toArray())!=1){
+                throw new InternalException("Update object to database update row number not is one.");
+            }
+        }catch (IllegalAccessException e){
+            e.printStackTrace();
+        }catch (InternalException e){
+            e.printStackTrace();
         }
-        return dataSource;
+    }
+
+    /**
+     * 执行一条UpdateSQL使用?占位符.
+     * @param sql 要执行的UpdateSQL.
+     * @param values SQL中?占位符的值.
+     * @return 返回结果为更新的行数.
+     * @throws SQLException 发生SQL异常
+     */
+    public int update(String sql,Object ...values) throws SQLException{
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try{
+            connection = activeRecordConfig.getDataSource().getConnection();
+            statement = connection.prepareStatement(sql);
+            for(int i=0;i<values.length;i++){
+                statement.setObject(i+1,values[i]);
+            }
+            return statement.executeUpdate();
+        }finally {
+            Utils.close(null,statement,connection);
+        }
+    }
+
+    /**
+     * 根据主键@Id删除数据库中对应记录.
+     * @throws SQLException 发生SQL异常.
+     * @throws ActiveRecordException 主键@Id为null.
+     */
+    public void delete() throws SQLException, ActiveRecordException {
+        try {
+            Object idValue = modelConfig.getIdField().get(this);
+            if(idValue == null){
+                throw new ActiveRecordException("Update operating @Id column value cannot is null." + modelConfig.getIdField().getName());
+            }
+            String sql = activeRecordConfig.getDialect()
+                    .delete(modelConfig.getTable(),new String[]{modelConfig.getIdField().getName()});
+            if(delete(sql,idValue)!=1){
+                throw new InternalException("Update object to database update row number not is one.");
+            }
+        }catch (IllegalAccessException e){
+            e.printStackTrace();
+        }catch (InternalException e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 执行一条DeleteSQL使用?占位符.
+     * @param sql 要执行的DeleteSQL.
+     * @param values SQL中?占位符的值.
+     * @return 返回结果为删除的行数.
+     * @throws SQLException 发生SQL异常
+     */
+    public int delete(String sql,Object ...values) throws SQLException{
+        return this.update(sql,values);
+    }
+
+    /**
+     * 当需要Model使用非默认ActiveRecordConfig时重写该方法.
+     * @return 返回欲使用的ActiveRecordConfig.
+     */
+    protected ActiveRecordConfig config(){
+        ActiveRecordConfig config = ActiveRecordConfig.getDefault();
+        if(config == null){
+            new ConfigException("Not found config, please new ActiveRecordConfig first.").printStackTrace();
+        }
+        return config;
     }
 }
