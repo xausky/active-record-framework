@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -94,27 +95,50 @@ public abstract class Model<T extends Model> {
      * @throws SQLException 发生SQL异常
      * @throws ActiveRecordException 主键@Id为null
      */
-    public T select() throws SQLException, ActiveRecordException {
+    public T selectOne() throws SQLException, ActiveRecordException {
         try {
             Object idValue = modelConfig.getIdField().get(this);
-            if (idValue == null) {
-                throw new ActiveRecordException("Default select operating @Id column value cannot is null." + modelConfig.getIdField().getName());
+            if (idValue != null) {
+                String sql = activeRecordConfig.getDialect().select(
+                        modelConfig.getTable(),
+                        new String[]{modelConfig.getIdField().getName()});
+                List<T> list = select(sql,idValue);
+                if(list.size()>0){
+                    return list.get(0);
+                }
             }
-            String sql = activeRecordConfig.getDialect().select(modelConfig.getTable(),new String[]{modelConfig.getIdField().getName()});
-            return select(sql,idValue).get(0);
         }catch (IllegalAccessException e){
             e.printStackTrace();
         }catch (IndexOutOfBoundsException e){
-            System.err.println("Select result set is empty.");
+
         }
         return null;
+    }
+
+    /**
+     * 以当前对象非null字段为条件查询
+     * @return 返回查询结果,没有结果为空List.
+     * @throws SQLException 发生SQL异常
+     */
+    public List<T> select() throws SQLException {
+        try {
+            List<String> keys = new LinkedList<>();
+            List<Object> values = new LinkedList<>();
+            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            String sql = activeRecordConfig.getDialect()
+                    .select(modelConfig.getTable(),keys.toArray(new String[keys.size()]));
+            return select(sql,values.toArray());
+        }catch (IllegalAccessException e){
+            e.printStackTrace();
+        }
+        return Collections.EMPTY_LIST;
     }
 
     /**
      * 执行一条SelectSQL值使用?占位,返回实体集.
      * @param sql 要执行的SelectSQL.
      * @param values SQL中?占位符的值.
-     * @return 执行结果的实体集为ArrayList&lt;实体类型&gt;,失败返回null.
+     * @return 执行结果的实体集为ArrayList&lt;实体类型&gt;,失败返回空List.
      * @throws SQLException 发生了SQL异常
      */
     @SuppressWarnings("unchecked")
@@ -137,30 +161,28 @@ public abstract class Model<T extends Model> {
         } finally {
             Utils.close(result,statement,connection);
         }
-        return null;
+        return Collections.EMPTY_LIST;
     }
 
     /**
      * 通过主键@Id来更新当前对象的其他非NULL属性.
      * @throws SQLException 发生SQL异常.
-     * @throws ActiveRecordException 主键@Id为null.
      */
-    public void update() throws SQLException, ActiveRecordException {
+    public void update() throws SQLException {
         try {
             Object idValue = modelConfig.getIdField().get(this);
-            if(idValue == null){
-                throw new ActiveRecordException("Update operating @Id column value cannot is null." + modelConfig.getIdField().getName());
-            }
-            List<String> keys = new LinkedList<>();
-            List<Object> values = new LinkedList<>();
-            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
-            String sql = activeRecordConfig.getDialect()
-                    .update(modelConfig.getTable(),
-                            keys.toArray(new String[keys.size()]),
-                            new String[]{modelConfig.getIdField().getName()});
-            values.add(idValue);
-            if(update(sql,values.toArray())!=1){
-                throw new InternalException("Update object to database update row number not is one.");
+            if (idValue != null) {
+                List<String> keys = new LinkedList<>();
+                List<Object> values = new LinkedList<>();
+                Utils.parserNotNullField(this, modelConfig.getFields(), keys, values);
+                String sql = activeRecordConfig.getDialect()
+                        .update(modelConfig.getTable(),
+                                keys.toArray(new String[keys.size()]),
+                                new String[]{modelConfig.getIdField().getName()});
+                values.add(idValue);
+                if (update(sql, values.toArray()) != 1) {
+                    throw new InternalException("Update object to database update row number not is one.");
+                }
             }
         }catch (IllegalAccessException e){
             e.printStackTrace();
@@ -194,18 +216,16 @@ public abstract class Model<T extends Model> {
     /**
      * 根据主键@Id删除数据库中对应记录.
      * @throws SQLException 发生SQL异常.
-     * @throws ActiveRecordException 主键@Id为null.
      */
-    public void delete() throws SQLException, ActiveRecordException {
+    public void delete() throws SQLException {
         try {
             Object idValue = modelConfig.getIdField().get(this);
-            if(idValue == null){
-                throw new ActiveRecordException("Delete operating @Id column value cannot is null." + modelConfig.getIdField().getName());
-            }
-            String sql = activeRecordConfig.getDialect()
-                    .delete(modelConfig.getTable(),new String[]{modelConfig.getIdField().getName()});
-            if(delete(sql,idValue)!=1){
-                throw new InternalException("Update object to database update row number not is one.");
+            if (idValue != null) {
+                String sql = activeRecordConfig.getDialect()
+                        .delete(modelConfig.getTable(), new String[]{modelConfig.getIdField().getName()});
+                if (delete(sql, idValue) != 1) {
+                    throw new InternalException("Update object to database update row number not is one.");
+                }
             }
         }catch (IllegalAccessException e){
             e.printStackTrace();

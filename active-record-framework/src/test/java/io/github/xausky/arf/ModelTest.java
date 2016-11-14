@@ -15,6 +15,7 @@ import org.junit.runners.MethodSorters;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 
 /**
  * Created by xausky on 11/14/16.
@@ -51,8 +52,14 @@ public class ModelTest {
     }
 
     @Test
-    public void testSelect() throws SQLException, ActiveRecordException {
-        user = user.select();
+    public void testSelectOne() throws SQLException, ActiveRecordException {
+        user = user.selectOne();
+        Assert.assertEquals(user.getName(),"xausky");
+    }
+
+    @Test
+    public void testSelect() throws SQLException {
+        user = user.select().get(0);
         Assert.assertEquals(user.getName(),"xausky");
     }
 
@@ -60,13 +67,13 @@ public class ModelTest {
     public void testUpdate() throws SQLException, ActiveRecordException {
         user.setName("updated");
         user.update();
-        user = user.select();
+        user = user.selectOne();
         Assert.assertEquals(user.getName(),"updated");
     }
 
     @Test
     public void testDelete() throws SQLException, ActiveRecordException {
         user.delete();
-        Assert.assertEquals(user.select(),null);
+        Assert.assertEquals(user.select(), Collections.EMPTY_LIST);
     }
 }

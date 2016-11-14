@@ -39,7 +39,6 @@ public class Main {
             for(User u:users){
                 System.out.printf("User{ id:%s, name:%s, email:%s }\n",u.getId(),u.getName(),u.getEmail());
                 u.setEmail(u.getName()+"@163.com");
-                u.delete();
             }
             Server server = Server.createWebServer();
             server.start();

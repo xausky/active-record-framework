@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.xausky</groupId>
-    <artifactId>active-record-framework</artifactId>
+    <artifactId>active-record-framework-parent</artifactId>
     <version>0.1.0</version>
     <modules>
-        <module>active-record-framework-core</module>
-        <module>active-record-framework-example</module>
+        <module>active-record-framework</module>
+        <module>active-record-framework-example-fusion</module>
     </modules>
     <packaging>pom</packaging>
 
