@@ -1,4 +1,4 @@
-package io.github.xausky.arf;
+package io.github.xausky.arf.config;
 
 import io.github.xausky.arf.dialect.Dialect;
 import io.github.xausky.arf.exception.ConfigException;

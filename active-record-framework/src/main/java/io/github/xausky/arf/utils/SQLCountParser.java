@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-package io.github.xausky.arf;
+package io.github.xausky.arf.utils;
 
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Function;

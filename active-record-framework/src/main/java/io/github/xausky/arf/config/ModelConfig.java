@@ -1,4 +1,4 @@
-package io.github.xausky.arf;
+package io.github.xausky.arf.config;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;

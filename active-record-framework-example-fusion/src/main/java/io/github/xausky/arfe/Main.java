@@ -1,6 +1,6 @@
 package io.github.xausky.arfe;
 
-import io.github.xausky.arf.ActiveRecordConfig;
+import io.github.xausky.arf.config.ActiveRecordConfig;
 import io.github.xausky.arf.dialect.H2Dialect;
 import org.h2.jdbcx.JdbcDataSource;
 import org.h2.tools.Server;
@@ -27,12 +27,12 @@ public class Main {
                             " name VARCHAR(256)," +
                             " email VARCHAR(256))");
             ActiveRecordConfig activeRecordConfig = new ActiveRecordConfig(dataSource,new H2Dialect());
-
+            User userService = new User();
             User user = new User();
             user.setName("xausky");
             user.setEmail("xausky@gmail.com");
 
-            Integer id = (int)user.insertOne();
+            Integer id = (int)userService.insertOne(user);
             System.out.println(id);
 
             List<User> users = user.selectByEmail("xausky@gmail.com");

@@ -1,8 +1,10 @@
 package io.github.xausky.arf;
 
+import io.github.xausky.arf.config.ActiveRecordConfig;
 import io.github.xausky.arf.dialect.H2Dialect;
 import io.github.xausky.arf.exception.ActiveRecordException;
 import io.github.xausky.arf.exception.ConfigException;
+import io.github.xausky.arf.utils.Utils;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -22,6 +24,7 @@ import java.util.Collections;
 public class ModelTest {
     private static Connection connection = null;
     private static Statement statement = null;
+    private static User userService;
     private User user;
     @BeforeClass
     public static void init() throws SQLException, ConfigException {
@@ -33,19 +36,20 @@ public class ModelTest {
         statement = connection.createStatement();
         statement.execute("CREATE TABLE User(id INTEGER NOT NULL AUTO_INCREMENT, name VARCHAR(256))" );
         new ActiveRecordConfig(dataSource,new H2Dialect());
+        userService = new User();
     }
 
     @Before
     public void insert() throws SQLException {
         user = new User();
         user.setName("xausky");
-        user.setId((int)user.insertOne());
+        user.setId((int)userService.insertOne(user));
     }
 
     @After
     public void delete() throws SQLException, ActiveRecordException {
-        user.deleteOne();
-        user.delete();
+        userService.deleteById(user.getId());
+        userService.delete(user);
     }
 
     @Test
@@ -54,29 +58,29 @@ public class ModelTest {
     }
 
     @Test
-    public void testSelectOne() throws SQLException, ActiveRecordException {
-        user = user.selectOne();
+    public void testSelectById() throws SQLException, ActiveRecordException {
+        user = userService.selectById(user.getId());
         Assert.assertEquals(user.getName(),"xausky");
     }
 
     @Test
     public void testSelect() throws SQLException {
-        user = user.select().get(0);
+        user = userService.select(user).get(0);
         Assert.assertEquals(user.getName(),"xausky");
     }
 
     @Test
     public void testUpdateOne() throws SQLException, ActiveRecordException {
         user.setName("updated");
-        user.updateOne();
-        user = user.selectOne();
+        userService.updateOne(user);
+        user = userService.selectById(user.getId());
         Assert.assertEquals(user.getName(),"updated");
     }
 
     @Test
-    public void testDeleteOne() throws SQLException, ActiveRecordException {
-        user.deleteOne();
-        Assert.assertEquals(user.select(), Collections.EMPTY_LIST);
+    public void testDeleteById() throws SQLException, ActiveRecordException {
+        user.deleteById(user.getId());
+        Assert.assertEquals(userService.select(user), Collections.EMPTY_LIST);
     }
 
     @Test
@@ -84,10 +88,10 @@ public class ModelTest {
         for(int i=0;i<16;i++){
             insert();
         }
-        int count = user.delete();
+        int count = userService.delete(user);
         //加上预插入的数据应为17
         Assert.assertEquals(count,17);
-        Assert.assertEquals(user.select(), Collections.EMPTY_LIST);
+        Assert.assertEquals(userService.select(user), Collections.EMPTY_LIST);
     }
 
     @Test
@@ -95,7 +99,7 @@ public class ModelTest {
         for(int i=0;i<16;i++){
             insert();
         }
-        Page<User> page = user.select(0,10);
+        Page<User> page = userService.select(user,0,10);
         //加上预插入的数据应为17
         Assert.assertEquals(page.getTotalSize(),17);
         Assert.assertEquals(page.getTotalPage(),2);

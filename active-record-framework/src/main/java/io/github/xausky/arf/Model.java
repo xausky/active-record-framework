@@ -1,15 +1,13 @@
 package io.github.xausky.arf;
 
+import io.github.xausky.arf.config.ActiveRecordConfig;
+import io.github.xausky.arf.config.ModelConfig;
 import io.github.xausky.arf.exception.ActiveRecordException;
 import io.github.xausky.arf.exception.ConfigException;
 import io.github.xausky.arf.exception.InternalException;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.util.AddAliasesVisitor;
-import net.sf.jsqlparser.util.SelectUtils;
+import io.github.xausky.arf.utils.SQLCountParser;
+import io.github.xausky.arf.utils.Utils;
 
-import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -49,15 +47,16 @@ public abstract class Model<T extends Model> {
     }
 
     /**
-     * 将当前对象插入数据库,将忽略主键@Id.
+     * 将obj对象插入数据库,将忽略主键@Id.
+     * @param obj 目标对象
      * @return 成功返回自增主键值,失败返回0.
      * @throws SQLException 发生SQL异常.
      */
-    public long insertOne() throws SQLException{
+    public long insertOne(T obj) throws SQLException{
         try {
             List<String> keys = new LinkedList<>();
             List<Object> values = new LinkedList<>();
-            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            Utils.parserNotNullField(obj,modelConfig.getFields(),keys,values);
             String sql = activeRecordConfig.getDialect()
                     .insert(modelConfig.getTable(),keys.toArray(new String[keys.size()]));
             return insert(sql,values.toArray());
@@ -98,25 +97,23 @@ public abstract class Model<T extends Model> {
     }
 
     /**
-     * 查询当前主键@Id对应的记录
+     * 查询主键key对应的记录
+     * @param key 主键key
      * @return 当前主键ID对应对象,不存在返回null.
      * @throws SQLException 发生SQL异常
      * @throws ActiveRecordException 主键@Id为null
      */
-    public T selectOne() throws SQLException, ActiveRecordException {
+    public T selectById(Object key) throws SQLException, ActiveRecordException {
         try {
-            Object idValue = modelConfig.getIdField().get(this);
-            if (idValue != null) {
+            if (key != null) {
                 String sql = activeRecordConfig.getDialect().select(
                         modelConfig.getTable(),
                         new String[]{modelConfig.getIdField().getName()});
-                List<T> list = select(sql,idValue);
+                List<T> list = select(sql,key);
                 if(list.size()>0){
                     return list.get(0);
                 }
             }
-        }catch (IllegalAccessException e){
-            e.printStackTrace();
         }catch (IndexOutOfBoundsException e){
 
         }
@@ -124,15 +121,16 @@ public abstract class Model<T extends Model> {
     }
 
     /**
-     * 以当前对象非null字段为条件查询
+     * 以obj对象非null字段为条件查询
+     * @param obj 目标对象
      * @return 返回查询结果,没有结果为空List.
      * @throws SQLException 发生SQL异常
      */
-    public List<T> select() throws SQLException {
+    public List<T> select(T obj) throws SQLException {
         try {
             List<String> keys = new LinkedList<>();
             List<Object> values = new LinkedList<>();
-            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            Utils.parserNotNullField(obj,modelConfig.getFields(),keys,values);
             String sql = activeRecordConfig.getDialect()
                     .select(modelConfig.getTable(),keys.toArray(new String[keys.size()]));
             return select(sql,values.toArray());
@@ -143,15 +141,16 @@ public abstract class Model<T extends Model> {
     }
 
     /**
-     * 以当前对象非null字段为条件查询
+     * 以obj对象非null字段为条件分页查询
+     * @param obj 目标对象
      * @return 返回查询结果,没有结果为空Page.
      * @throws SQLException 发生SQL异常
      */
-    public Page<T> select(int page,int size) throws SQLException {
+    public Page<T> select(T obj,int page,int size) throws SQLException {
         try {
             List<String> keys = new LinkedList<>();
             List<Object> values = new LinkedList<>();
-            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            Utils.parserNotNullField(obj,modelConfig.getFields(),keys,values);
             String sql = activeRecordConfig.getDialect()
                     .select(modelConfig.getTable(),keys.toArray(new String[keys.size()]));
             return select(sql,page,size,values.toArray());
@@ -193,6 +192,15 @@ public abstract class Model<T extends Model> {
         return Collections.EMPTY_LIST;
     }
 
+    /**
+     * 分页查询
+     * @param sql sql 要执行的SelectSQL.
+     * @param page 页码
+     * @param size 每页大小
+     * @param values SQL中?占位符的值.
+     * @return 返回查询结果,没有结果为空Page.
+     * @throws SQLException SQLException 发生SQL异常
+     */
     public Page<T> select(String sql,int page,int size,Object ...values) throws SQLException{
         Page<T> result = new Page<T>();
         String countSql = SQLCountParser.getSmartCountSql(sql);
@@ -207,16 +215,17 @@ public abstract class Model<T extends Model> {
     }
 
     /**
-     * 通过主键@Id来更新当前对象的其他非NULL属性.
+     * 通过主键@Id来更新obj对象的其他非NULL属性.
+     * @param obj 目标对象
      * @throws SQLException 发生SQL异常.
      */
-    public void updateOne() throws SQLException {
+    public void updateOne(T obj) throws SQLException {
         try {
-            Object idValue = modelConfig.getIdField().get(this);
+            Object idValue = modelConfig.getIdField().get(obj);
             if (idValue != null) {
                 List<String> keys = new LinkedList<>();
                 List<Object> values = new LinkedList<>();
-                Utils.parserNotNullField(this, modelConfig.getFields(), keys, values);
+                Utils.parserNotNullField(obj, modelConfig.getFields(), keys, values);
                 String sql = activeRecordConfig.getDialect()
                         .update(modelConfig.getTable(),
                                 keys.toArray(new String[keys.size()]),
@@ -258,15 +267,16 @@ public abstract class Model<T extends Model> {
     }
 
     /**
-     * 以当前对象非null字段为条件删除
+     * 以obj对象非null字段为条件删除
+     * @param obj 目标对象
      * @return 删除了的条数
      * @throws SQLException 发生SQL异常
      */
-    public int delete() throws SQLException {
+    public int delete(T obj) throws SQLException {
         try {
             List<String> keys = new LinkedList<>();
             List<Object> values = new LinkedList<>();
-            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            Utils.parserNotNullField(obj,modelConfig.getFields(),keys,values);
             String sql = activeRecordConfig.getDialect()
                     .delete(modelConfig.getTable(),keys.toArray(new String[keys.size()]));
             return delete(sql,values.toArray());
@@ -277,21 +287,19 @@ public abstract class Model<T extends Model> {
     }
 
     /**
-     * 根据主键@Id删除数据库中对应记录.
+     * 根据主键删除数据库中对应记录.
+     * @param key 主键key
      * @throws SQLException 发生SQL异常.
      */
-    public void deleteOne() throws SQLException {
+    public void deleteById(Object key) throws SQLException {
         try {
-            Object idValue = modelConfig.getIdField().get(this);
-            if (idValue != null) {
+            if (key != null) {
                 String sql = activeRecordConfig.getDialect()
                         .delete(modelConfig.getTable(), new String[]{modelConfig.getIdField().getName()});
-                if (delete(sql, idValue) != 1) {
+                if (delete(sql, key) != 1) {
                     throw new InternalException("Update object to database update row number not is one.");
                 }
             }
-        }catch (IllegalAccessException e){
-            e.printStackTrace();
         }catch (InternalException e){
             System.err.println(e.getMessage());
         }
@@ -305,7 +313,7 @@ public abstract class Model<T extends Model> {
      * @throws SQLException 发生SQL异常
      */
     public int delete(String sql,Object ...values) throws SQLException{
-        return this.update(sql,values);
+        return update(sql,values);
     }
 
     public int count(String sql,Object ...values) throws SQLException{

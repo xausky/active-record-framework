@@ -1,4 +1,4 @@
-package io.github.xausky.arf;
+package io.github.xausky.arf.utils;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
