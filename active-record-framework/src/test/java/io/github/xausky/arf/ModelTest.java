@@ -31,7 +31,7 @@ public class ModelTest {
         dataSource.setPassword("root");
         connection = dataSource.getConnection();
         statement = connection.createStatement();
-        statement.execute("CREATE TABLE User(id INTEGER NOT NULL AUTO_INCREMENT, name VARCHAR(256), email VARCHAR(256) )" );
+        statement.execute("CREATE TABLE User(id INTEGER NOT NULL AUTO_INCREMENT, name VARCHAR(256))" );
         new ActiveRecordConfig(dataSource,new H2Dialect());
     }
 
@@ -39,16 +39,17 @@ public class ModelTest {
     public void insert() throws SQLException {
         user = new User();
         user.setName("xausky");
-        user.setId((int)user.insert());
+        user.setId((int)user.insertOne());
     }
 
     @After
     public void delete() throws SQLException, ActiveRecordException {
+        user.deleteOne();
         user.delete();
     }
 
     @Test
-    public void testInsert() throws SQLException, ActiveRecordException {
+    public void testInsertOne() throws SQLException, ActiveRecordException {
         Assert.assertNotEquals(user.getId().intValue(),0);
     }
 
@@ -65,16 +66,27 @@ public class ModelTest {
     }
 
     @Test
-    public void testUpdate() throws SQLException, ActiveRecordException {
+    public void testUpdateOne() throws SQLException, ActiveRecordException {
         user.setName("updated");
-        user.update();
+        user.updateOne();
         user = user.selectOne();
         Assert.assertEquals(user.getName(),"updated");
     }
 
     @Test
-    public void testDelete() throws SQLException, ActiveRecordException {
-        user.delete();
+    public void testDeleteOne() throws SQLException, ActiveRecordException {
+        user.deleteOne();
+        Assert.assertEquals(user.select(), Collections.EMPTY_LIST);
+    }
+
+    @Test
+    public void testDelete() throws SQLException {
+        for(int i=0;i<16;i++){
+            insert();
+        }
+        int count = user.delete();
+        //加上预插入的数据应为17
+        Assert.assertEquals(count,17);
         Assert.assertEquals(user.select(), Collections.EMPTY_LIST);
     }
 

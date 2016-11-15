@@ -32,7 +32,7 @@ public class Main {
             user.setName("xausky");
             user.setEmail("xausky@gmail.com");
 
-            Integer id = (int)user.insert();
+            Integer id = (int)user.insertOne();
             System.out.println(id);
 
             List<User> users = user.selectByEmail("xausky@gmail.com");

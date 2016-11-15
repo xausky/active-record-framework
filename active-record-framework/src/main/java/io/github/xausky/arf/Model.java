@@ -53,7 +53,7 @@ public abstract class Model<T extends Model> {
      * @return 成功返回自增主键值,失败返回0.
      * @throws SQLException 发生SQL异常.
      */
-    public long insert() throws SQLException{
+    public long insertOne() throws SQLException{
         try {
             List<String> keys = new LinkedList<>();
             List<Object> values = new LinkedList<>();
@@ -210,7 +210,7 @@ public abstract class Model<T extends Model> {
      * 通过主键@Id来更新当前对象的其他非NULL属性.
      * @throws SQLException 发生SQL异常.
      */
-    public void update() throws SQLException {
+    public void updateOne() throws SQLException {
         try {
             Object idValue = modelConfig.getIdField().get(this);
             if (idValue != null) {
@@ -258,10 +258,29 @@ public abstract class Model<T extends Model> {
     }
 
     /**
+     * 以当前对象非null字段为条件删除
+     * @return 删除了的条数
+     * @throws SQLException 发生SQL异常
+     */
+    public int delete() throws SQLException {
+        try {
+            List<String> keys = new LinkedList<>();
+            List<Object> values = new LinkedList<>();
+            Utils.parserNotNullField(this,modelConfig.getFields(),keys,values);
+            String sql = activeRecordConfig.getDialect()
+                    .delete(modelConfig.getTable(),keys.toArray(new String[keys.size()]));
+            return delete(sql,values.toArray());
+        }catch (IllegalAccessException e){
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
      * 根据主键@Id删除数据库中对应记录.
      * @throws SQLException 发生SQL异常.
      */
-    public void delete() throws SQLException {
+    public void deleteOne() throws SQLException {
         try {
             Object idValue = modelConfig.getIdField().get(this);
             if (idValue != null) {
