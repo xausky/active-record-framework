@@ -28,14 +28,20 @@ public class ModelTest {
     private User user;
     @BeforeClass
     public static void init() throws SQLException, ConfigException {
-        JdbcDataSource dataSource = new JdbcDataSource();
-        dataSource.setURL("jdbc:h2:mem:test");
-        dataSource.setUser("root");
-        dataSource.setPassword("root");
-        connection = dataSource.getConnection();
-        statement = connection.createStatement();
-        statement.execute("CREATE TABLE User(id INTEGER NOT NULL AUTO_INCREMENT, name VARCHAR(256))" );
-        new ActiveRecordConfig(dataSource,new H2Dialect());
+        Connection connection = null;
+        Statement statement = null;
+        try {
+            JdbcDataSource dataSource = new JdbcDataSource();
+            dataSource.setURL("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1");
+            dataSource.setUser("root");
+            dataSource.setPassword("root");
+            connection = dataSource.getConnection();
+            statement = connection.createStatement();
+            statement.execute("CREATE TABLE User(id INTEGER NOT NULL AUTO_INCREMENT, name VARCHAR(256), email VARCHAR(256))");
+            new ActiveRecordConfig(dataSource, new H2Dialect());
+        }finally {
+            Utils.close(null,statement,connection);
+        }
         userService = new User();
     }
 

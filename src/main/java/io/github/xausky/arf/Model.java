@@ -388,4 +388,29 @@ public abstract class Model<T extends Model> {
         }
         return config;
     }
+
+    @Override
+    public String toString() {
+        StringBuffer sb = new StringBuffer(modelConfig.getTable());
+        try {
+            sb.append("(" + modelConfig.getIdField().get(this) + "){");
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        boolean first = true;
+        for(Field field:modelConfig.getFields()){
+            try {
+                if(first){
+                    first = false;
+                }else {
+                    sb.append(", ");
+                }
+                sb.append(field.getName() + ":" + field.get(this));
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        sb.append("}");
+        return sb.toString();
+    }
 }

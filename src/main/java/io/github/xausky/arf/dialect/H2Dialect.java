@@ -28,12 +28,15 @@ public class H2Dialect implements Dialect {
 
     @Override
     public String select(String table, String[] keys) {
-        StringBuilder sql = new StringBuilder("select * from `").append(table).append("` where ");
-        for (int i=0; i<keys.length; i++) {
-            if (i > 0) {
-                sql.append(" and ");
+        StringBuilder sql = new StringBuilder("select * from `").append(table).append("`");
+        if(keys.length>0) {
+            sql.append(" where ");
+            for (int i = 0; i < keys.length; i++) {
+                if (i > 0) {
+                    sql.append(" and ");
+                }
+                sql.append("`").append(keys[i]).append("` = ?");
             }
-            sql.append("`").append(keys[i]).append("` = ?");
         }
         return sql.toString();
     }
@@ -48,12 +51,14 @@ public class H2Dialect implements Dialect {
             }
             sql.append("`").append(sets[i]).append("` = ? ");
         }
-        sql.append(" where ");
-        for (int i=0; i<keys.length; i++) {
-            if (i > 0) {
-                sql.append(" and ");
+        if(keys.length>0) {
+            sql.append(" where ");
+            for (int i = 0; i < keys.length; i++) {
+                if (i > 0) {
+                    sql.append(" and ");
+                }
+                sql.append("`").append(keys[i]).append("` = ?");
             }
-            sql.append("`").append(keys[i]).append("` = ?");
         }
         return sql.toString();
     }
@@ -61,12 +66,15 @@ public class H2Dialect implements Dialect {
     @Override
     public String delete(String table, String[] keys) {
         StringBuilder sql = new StringBuilder("delete from `")
-                .append(table).append("` where ");
-        for (int i=0; i<keys.length; i++) {
-            if (i > 0) {
-                sql.append(" and ");
+                .append(table).append("`");
+        if(keys.length>0) {
+            sql.append(" where ");
+            for (int i = 0; i < keys.length; i++) {
+                if (i > 0) {
+                    sql.append(" and ");
+                }
+                sql.append("`").append(keys[i]).append("` = ?");
             }
-            sql.append("`").append(keys[i]).append("` = ?");
         }
         return sql.toString();
     }
