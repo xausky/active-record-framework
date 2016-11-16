@@ -81,7 +81,7 @@ public class H2Dialect implements Dialect {
 
     @Override
     public String paginate(int page, int size, String select) {
-        int offset = page * (size - 1);
+        int offset = page * size;
         StringBuilder ret = new StringBuilder();
         ret.append(select);
         ret.append(" limit ").append(offset)
